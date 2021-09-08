@@ -62,6 +62,7 @@ import {
     getMappedData
 } from './vaultUtils';
 import BasicModal from '../common/basicModal';
+import LineChart from '../common/chart/lineChart/lineChart';
 import DoneMark from '../../assets/done.png';
 
 const emitter = Store.emitter;
@@ -785,6 +786,7 @@ class Asset extends Component {
                 value: '1y'
             }],
             vaultAssetHistoricalData: [],
+            chartData: [],
             withdrawErrorMessage: "",
             withdrawEarnErrorMessage: "",
             happyHourWarning: "",
@@ -868,6 +870,8 @@ class Asset extends Component {
         if (apyResponseData.success) {
             let mappedHistoricalData = getMappedData(apyResponseData.data || [], asset.id)
             this.setState({vaultAssetHistoricalData: mappedHistoricalData});
+
+            this.setState({chartData: apyResponseData.data});
         }
     }
 
@@ -2269,6 +2273,9 @@ class Asset extends Component {
                         <div className={classes.sepperator}></div>
                     </Grid>
                     <Grid item xs={12}>
+                        {this.renderChart2(asset)}
+                    </Grid>
+                    <Grid item xs={12}>
                         {this.renderChart(asset)}
                     </Grid>
                     <Grid item xs={12}>
@@ -2427,6 +2434,51 @@ class Asset extends Component {
         );
     }
 
+    renderChart2 = (asset) => {
+        const { chartData } = this.state;
+        const { classes }  = this.props;
+
+        if(!chartData  || chartData === undefined) {
+            return null;
+        }
+
+        const chartTitle = {
+            yearn: "Historical Earn & Vault Performance",
+            compound: "Vault Performance History",
+            citadel: "Vault Performance History",
+            elon: "Vault Performance History",
+            cuban: "Vault Performance History",
+            daoFaang: "Vault Performance History",
+            moneyPrinter: "Vault Performance History",
+        };
+
+        return (
+            <>
+                <Grid
+                    container
+                    justifyContent="space-between"
+                >
+                    <Grid item xs={6} className={classes.pnlDivPosition}>
+                        {chartTitle[asset.strategyType]}
+                        <span className={classes.pnlVault}
+                              style={{color: asset.pnlTextColor}}>{asset.pnl ? asset.pnl.toFixed(2) : '0.00'}%</span>
+                    </Grid>
+                    <Grid item xs={6} className={classes.timeRangeMain}>
+                        {this.state.timeRange.map((range, index) => {
+                            return <span
+                                className={classes.timeRangeLabel + (range.value === this.state.selectedTimeRange ? " " + classes.activeLabel : "")}
+                                onClick={() => this.selectRangeLabel(asset, range.value)}
+                            >
+                                {range.label}
+                            </span>
+                        })}
+                    </Grid>
+                </Grid>
+                <LineChart data={chartData} title={""}/>
+            </>
+        );
+    }
+
     renderChart = (asset) => {
         var earnAPY = [];
         var vaultAPY = [];
@@ -2453,8 +2505,10 @@ class Asset extends Component {
             let groups;
             if (
                 asset.strategyType === "citadel" ||
-                asset.strategyType === "daoFaang"
-            ) {
+                asset.strategyType === "daoFaang" || 
+                asset.strategyType === "elon" ||
+                asset.strategyType === "cuban" 
+            ) { 
 
                 let data = this.state.vaultAssetHistoricalData && this.state.vaultAssetHistoricalData.length ? this.state.vaultAssetHistoricalData : asset.historicalPerformance || [];
                 groups = data
@@ -2516,12 +2570,28 @@ class Asset extends Component {
                     } else if (asset.strategyType === "elon") {
                         elonAPY.push([
                             date,
-                            parseFloat(groups[date][0].elonApy.toFixed(4)),
+                            parseFloat((groups[date][0]["lp_performance"] * 100).toFixed(4)),
+                        ]);
+                        btcAPY.push([
+                            date,
+                            parseFloat((groups[date][0]["btc_performance"] * 100).toFixed(4)),
+                        ]);
+                        ethAPY.push([
+                            date,
+                            parseFloat((groups[date][0]["eth_performance"] * 100).toFixed(4)),
                         ]);
                     } else if (asset.strategyType === "cuban") {
                         cubanAPY.push([
                             date,
-                            parseFloat(groups[date][0].cubanApy.toFixed(4)),
+                            parseFloat((groups[date][0]["lp_performance"] * 100).toFixed(4)),
+                        ]);
+                        btcAPY.push([
+                            date,
+                            parseFloat((groups[date][0]["btc_performance"] * 100).toFixed(4)),
+                        ]);
+                        ethAPY.push([
+                            date,
+                            parseFloat((groups[date][0]["eth_performance"] * 100).toFixed(4)),
                         ]);
                     } else if (asset.strategyType === "daoFaang") {
                         faangAPY.push([
@@ -2566,38 +2636,39 @@ class Asset extends Component {
                                 date,
                                 parseFloat(groups[date][halfCount].compoundApy.toFixed(4)),
                             ]);
-                        } else if (asset.strategyType === "citadel") {
-                            citadelAPY.push([
-                                date,
-                                parseFloat(groups[date][halfCount].citadelApy.toFixed(4)),
-                            ]);
-                        } else if (asset.strategyType === "elon") {
-                            elonAPY.push([
-                                date,
-                                parseFloat(groups[date][halfCount].elonApy.toFixed(4)),
-                            ]);
-                        } else if (asset.strategyType === "cuban") {
-                            cubanAPY.push([
-                                date,
-                                parseFloat(groups[date][halfCount].cubanApy.toFixed(4)),
-                            ]);
-                        } else if (asset.strategyType === "daoFaang") {
-                            faangAPY.push([
-                                date,
-                                parseFloat(groups[date][halfCount].faangApy.toFixed(4)),
-                            ]);
-                        } else if (asset.strategyType === "moneyPrinter") {
-                            moneyPrinterAPY.push([
-                                date,
-                                parseFloat(groups[date][halfCount].moneyPrinterApy.toFixed(4)),
-                            ]);
+                        // // } else if (asset.strategyType === "citadel") {
+                        // //     citadelAPY.push([
+                        // //         date,
+                        // //         parseFloat(groups[date][halfCount].citadelApy.toFixed(4)),
+                        // //     ]);
+                        // // } else if (asset.strategyType === "elon") {
+                        // //     elonAPY.push([
+                        // //         date,
+                        // //         parseFloat(groups[date][halfCount].elonApy.toFixed(4)),
+                        // //     ]);
+                        // } else if (asset.strategyType === "cuban") {
+                        //     cubanAPY.push([
+                        //         date,
+                        //         parseFloat(groups[date][halfCount].cubanApy.toFixed(4)),
+                        //     ]);
+                        // } else if (asset.strategyType === "daoFaang") {
+                        //     faangAPY.push([
+                        //         date,
+                        //         parseFloat(groups[date][halfCount].faangApy.toFixed(4)),
+                        //     ]);
+                        // } else if (asset.strategyType === "moneyPrinter") {
+                        //     moneyPrinterAPY.push([
+                        //         date,
+                        //         parseFloat(groups[date][halfCount].moneyPrinterApy.toFixed(4)),
+                        //     ]);
+                        // }
                         }
                     }
                 });
             } catch (ex) {
             }
         }
-
+    
         let options = {};
 
         if (asset.strategyType === "yearn") {
@@ -2737,6 +2808,17 @@ class Asset extends Component {
                     {
                         name: "Elon",
                         data: elonAPY,
+                        color: "#FFFFFF",
+                    },
+                    {
+                        name: "BTC",
+                        data: btcAPY,
+                        color: "#f7931b",
+                    },
+                    {
+                        name: "ETH",
+                        data: ethAPY,
+                        color: "#464a75",
                     },
                 ],
                 responsive: {
@@ -2772,6 +2854,17 @@ class Asset extends Component {
                     {
                         name: "Cuban",
                         data: cubanAPY,
+                        color: "#FFFFFF",
+                    },
+                    {
+                        name: "BTC",
+                        data: btcAPY,
+                        color: "#f7931b",
+                    },
+                    {
+                        name: "ETH",
+                        data: ethAPY,
+                        color: "#464a75",
                     },
                 ],
                 responsive: {

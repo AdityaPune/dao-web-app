@@ -214,3 +214,4 @@ export const NETWORK = {
   MATIC: 137,
   MUMBAI: 80001,
 }
+export const HIDE_NAV_INNERWIDTH = 760;
